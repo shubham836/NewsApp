@@ -9,11 +9,11 @@ import androidx.room.Query
 @Dao
 interface ArticleDao {
     @Query("SELECT * FROM ArticleEntity")
-    fun getAllArticles(): List<ArticleEntity>
+    suspend fun getAllArticles(): List<ArticleEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun addBookmark(article: ArticleEntity)
+    suspend fun addBookmark(article: ArticleEntity)
 
     @Delete
-    fun deleteBookmark(article: ArticleEntity)
+    suspend fun deleteBookmark(article: ArticleEntity)
 }

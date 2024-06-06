@@ -32,8 +32,6 @@ class TopHeadlines : Fragment() {
     private val binding get() = _binding!!
     private lateinit var newsAdapter: NewsAdapter
     private lateinit var newsViewModel: NewsViewModel
-    private lateinit var newsDatabase: NewsDatabase
-
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -45,7 +43,6 @@ class TopHeadlines : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
         binding.searchView.clearFocus()
         binding.searchView.setOnClickListener {
             binding.searchView.isIconified = true
@@ -65,7 +62,6 @@ class TopHeadlines : Fragment() {
             }
         })
 
-        newsDatabase = NewsDatabase.getDatabase(requireContext())
         binding.topHeadlinesRecyclerView.layoutManager = LinearLayoutManager(context)
         newsViewModel = ViewModelProvider(requireActivity()).get(NewsViewModel::class.java)
 
@@ -83,7 +79,7 @@ class TopHeadlines : Fragment() {
                     it[position].url
                 )
                 val bundle = Bundle().apply {
-                    putParcelable("article",article)
+                    putParcelable("article", article)
                 }
                 val newsArticleFragment = NewsArticle()
                 newsArticleFragment.arguments = bundle
@@ -99,19 +95,15 @@ class TopHeadlines : Fragment() {
                         dialog.dismiss()
                     }
                     .setPositiveButton("Bookmark") { dialog, which ->
-                        runBlocking {
-                            withContext(Dispatchers.IO) {
-                                newsDatabase.getArticleDao().addBookmark(
-                                    ArticleEntity(
-                                        description = it[position].description,
-                                        image = it[position].image,
-                                        url = it[position].url,
-                                        title = it[position].title,
-                                        publishedAt = it[position].publishedAt
-                                    )
-                                )
-                            }
-                        }
+                        newsViewModel.addBookmark(
+                            ArticleEntity(
+                                description = it[position].description,
+                                image = it[position].image,
+                                url = it[position].url,
+                                title = it[position].title,
+                                publishedAt = it[position].publishedAt
+                            )
+                        )
                         Toast.makeText(requireContext(), "Added to bookmarks", Toast.LENGTH_SHORT)
                             .show()
                     }

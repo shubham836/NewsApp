@@ -9,15 +9,17 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shubh.news.model.Article
 import com.shubh.news.NewsAdapter
+import com.shubh.news.NewsViewModel
 import com.shubh.news.R
 import com.shubh.news.databinding.FragmentBookmarksBinding
 import com.shubh.news.db.ArticleEntity
-import com.shubh.news.db.NewsDatabase
 import com.shubh.news.ui.MainActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -27,10 +29,10 @@ class Bookmarks : Fragment() {
     private val TAG = "Bookmarks"
     private var _binding: FragmentBookmarksBinding? = null
     private val binding get() = _binding!!
-    private lateinit var newsDatabase: NewsDatabase
     private lateinit var bookmarkedArticles: List<ArticleEntity>
     private var articles = mutableListOf<Article>()
     private lateinit var newsAdapter: NewsAdapter
+    private lateinit var newsViewModel: NewsViewModel
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -52,8 +54,8 @@ class Bookmarks : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        newsDatabase = NewsDatabase.getDatabase(requireContext())
 
+        newsViewModel = ViewModelProvider(requireActivity()).get(NewsViewModel::class.java)
         getData()
 
         binding.bookmarksRecyclerView.layoutManager = LinearLayoutManager(context)
@@ -66,7 +68,8 @@ class Bookmarks : Fragment() {
                 articles[it].url
             )
             val bundle = Bundle().apply {
-                putParcelable("article",article)
+                putParcelable("article", article)
+                putBoolean("isNavigatedFromBookmark", true)
             }
             val newsArticleFragment = NewsArticle()
             newsArticleFragment.arguments = bundle
@@ -81,45 +84,43 @@ class Bookmarks : Fragment() {
                     dialog.dismiss()
                 }
                 .setPositiveButton("Delete") { dialog, which ->
-                    runBlocking {
-                        withContext(Dispatchers.IO) {
-                            newsDatabase.getArticleDao()
-                                .deleteBookmark(bookmarkedArticles[position])
-                            articles.removeAt(position)
-                        }
-                    }
+
+                    newsViewModel.deleteBookmark(bookmarkedArticles[position])
+                    articles.removeAt(position)
+
                     newsAdapter.notifyItemRemoved(position)
                 }
                 .show()
         })
         binding.bookmarksRecyclerView.adapter = newsAdapter
-//        findNavController().popBackStack()
     }
 
     private fun getData() {
-        runBlocking {
-            withContext(Dispatchers.IO) {
-                bookmarkedArticles = newsDatabase.getArticleDao().getAllArticles()
-            }
-        }
-        if (bookmarkedArticles.isNotEmpty()) {
-            articles.clear()
-            bookmarkedArticles.forEach {
-                articles.add(
-                    Article(
-                        it.description,
-                        it.image,
-                        it.publishedAt,
-                        it.title,
-                        it.url
+        newsViewModel.getAllBookmark()
+
+        newsViewModel.allBookmarks.observe(viewLifecycleOwner, Observer {
+            bookmarkedArticles = it
+            if (bookmarkedArticles.isNotEmpty()) {
+                articles.clear()
+                bookmarkedArticles.forEach {
+                    articles.add(
+                        Article(
+                            it.description,
+                            it.image,
+                            it.publishedAt,
+                            it.title,
+                            it.url
+                        )
                     )
-                )
+                }
+                Log.d(TAG, "onViewCreated: ${bookmarkedArticles.size}")
+            } else {
+                binding.bookmarksRecyclerView.visibility = View.GONE
+                binding.errorMessageTextView.visibility = View.VISIBLE
             }
-            Log.d(TAG, "onViewCreated: ${bookmarkedArticles.size}")
-        } else {
-            binding.bookmarksRecyclerView.visibility = View.GONE
-            binding.errorMessageTextView.visibility = View.VISIBLE
-        }
+        })
+
+
     }
 
     override fun onDestroyView() {

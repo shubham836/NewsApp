@@ -3,9 +3,14 @@ package com.shubh.news
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.shubh.news.api.RetrofitHelper
+import com.shubh.news.db.ArticleEntity
 import com.shubh.news.model.Article
 import com.shubh.news.model.NewsResponse
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -13,9 +18,12 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-class NewsViewModel() : ViewModel() {
+class NewsViewModel(val newsRepository: NewsRepository) : ViewModel() {
     private val TAG = "NewsViewModel"
     var articlesList: MutableLiveData<List<Article>> = MutableLiveData()
+    var bookmarkAdded: MutableLiveData<Boolean> = MutableLiveData()
+    var bookmarkDeleted: MutableLiveData<Boolean> = MutableLiveData()
+    var allBookmarks:MutableLiveData<List<ArticleEntity>> = MutableLiveData()
 
     fun getTopHeadlines() {
         var call: Call<NewsResponse> = RetrofitHelper.newsAPI.getTopHeadlines()
@@ -64,6 +72,25 @@ class NewsViewModel() : ViewModel() {
             }
         })
     }
+
+    fun addBookmark(article: ArticleEntity) {
+        viewModelScope.launch{
+            newsRepository.addBookmark(article)
+        }
+    }
+
+    fun deleteBookmark(article: ArticleEntity){
+        viewModelScope.launch {
+            newsRepository.deleteBookmark(article)
+        }
+    }
+
+    fun getAllBookmark(){
+        viewModelScope.launch{
+           allBookmarks.postValue(newsRepository.getBookmarks())
+        }
+    }
+
 
     fun getTime(time: String): String {
         val instant = Instant.parse(time)

@@ -6,7 +6,10 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.isVisible
+import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.navArgs
+import com.shubh.news.NewsViewModel
 import com.shubh.news.R
 import com.shubh.news.databinding.FragmentNewsArticleBinding
 import com.shubh.news.db.ArticleEntity
@@ -24,8 +27,7 @@ class NewsArticle : Fragment() {
     private val TAG = "NewsArticle"
     private var _binding: FragmentNewsArticleBinding? = null
     private val binding get() = _binding!!
-    private lateinit var newsDatabase: NewsDatabase
-
+    private lateinit var newsViewModel: NewsViewModel
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -40,31 +42,32 @@ class NewsArticle : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
-        newsDatabase = NewsDatabase.getDatabase(requireContext())
-        val article:Article? = arguments?.getParcelable("article")
+        newsViewModel = ViewModelProvider(requireActivity()).get(NewsViewModel::class.java)
+        val article: Article? = arguments?.getParcelable("article")
+        val isNavigatedFromBookmark: Boolean? = arguments?.getBoolean("isNavigatedFromBookmark")
+        if (isNavigatedFromBookmark != null) {
+            if (isNavigatedFromBookmark) {
+                binding.addBookmarkFab.visibility = View.GONE
+            }
+        }
         binding.webview.loadUrl(article!!.url)
 
         binding.addBookmarkFab.setOnClickListener {
-            runBlocking {
-                withContext(Dispatchers.IO) {
-                    try {
-                        binding.addBookmarkFab.isClickable = false
-                        newsDatabase.getArticleDao().addBookmark(
-                            ArticleEntity(
-                                description = article!!.description,
-                                image = article.image,
-                                url = article.url,
-                                title = article.title,
-                                publishedAt = article.publishedAt
-                            )
-                        )
-                        binding.addBookmarkFab.setImageResource(R.drawable.bookmark_added)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "onViewCreated: ${e.stackTraceToString()}")
-                    }
 
-                }
+            try {
+                binding.addBookmarkFab.isClickable = false
+                newsViewModel.addBookmark(
+                    ArticleEntity(
+                        description = article!!.description,
+                        image = article.image,
+                        url = article.url,
+                        title = article.title,
+                        publishedAt = article.publishedAt
+                    )
+                )
+                binding.addBookmarkFab.setImageResource(R.drawable.bookmark_added)
+            } catch (e: Exception) {
+                Log.e(TAG, "onViewCreated: ${e.stackTraceToString()}")
             }
         }
     }
