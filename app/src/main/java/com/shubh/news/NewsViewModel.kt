@@ -1,93 +1,80 @@
 package com.shubh.news
 
-import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shubh.news.api.RetrofitHelper
 import com.shubh.news.db.ArticleEntity
 import com.shubh.news.model.Article
-import com.shubh.news.model.NewsResponse
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import org.json.JSONObject
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 class NewsViewModel(val newsRepository: NewsRepository) : ViewModel() {
     private val TAG = "NewsViewModel"
-    var articlesList: MutableLiveData<List<Article>> = MutableLiveData()
+    var articlesList: MutableLiveData<NewsResult<List<Article>>> = MutableLiveData()
     var bookmarkAdded: MutableLiveData<Boolean> = MutableLiveData()
     var bookmarkDeleted: MutableLiveData<Boolean> = MutableLiveData()
-    var allBookmarks:MutableLiveData<List<ArticleEntity>> = MutableLiveData()
+    var allBookmarks: MutableLiveData<List<ArticleEntity>> = MutableLiveData()
+
 
     fun getTopHeadlines() {
-        var call: Call<NewsResponse> = RetrofitHelper.newsAPI.getTopHeadlines()
-        call.enqueue(object : Callback<NewsResponse> {
-            override fun onResponse(p0: Call<NewsResponse>, response: Response<NewsResponse>) {
-                try {
-                    if (response.isSuccessful) {
-                        val articles = response.body()!!.articles
-                        articles.map {
-                            it.publishedAt = getTime(it.publishedAt)
-                        }
-                        articlesList.value = articles
+        viewModelScope.launch {
+            articlesList.postValue(NewsResult.Loading())
+            val response = newsRepository.getTopHeadlines()
+            if (response.isSuccessful && response.body() != null) {
+                val articles =
+                    response.body()!!.articles.map {
+                        it.publishedAt = getTime(it.publishedAt)
+                        it
                     }
-                } catch (e: Exception) {
-                    Log.e(TAG, "onResponse: ${e.stackTraceToString()}")
-                }
+                articlesList.postValue(NewsResult.Success(articles))
+            } else if (response.errorBody() != null) {
+                val errorObj = JSONObject(response.errorBody()!!.charStream().readText())
+                articlesList.postValue(NewsResult.Error(message = errorObj.getString("message")))
+            } else {
+                articlesList.postValue(NewsResult.Error(message = "Something went wrong"))
             }
-
-            override fun onFailure(p0: Call<NewsResponse>, throwable: Throwable) {
-                Log.e(TAG, "onFailure: ${throwable.message}")
-            }
-
-        })
-
-    }
-
-    fun searchNews(query: String) {
-        var call: Call<NewsResponse> = RetrofitHelper.newsAPI.searchNews(query = query)
-        call.enqueue(object : Callback<NewsResponse> {
-            override fun onResponse(p0: Call<NewsResponse>, response: Response<NewsResponse>) {
-                try {
-                    if (response.isSuccessful) {
-                        val articles = response.body()!!.articles
-                        articles.map {
-                            it.publishedAt = getTime(it.publishedAt)
-                        }
-                        articlesList.value = articles
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "onResponse: ${e.stackTraceToString()}")
-                }
-            }
-
-            override fun onFailure(p0: Call<NewsResponse>, throwable: Throwable) {
-                Log.e(TAG, "onFailure: ${throwable.message}")
-            }
-        })
-    }
-
-    fun addBookmark(article: ArticleEntity) {
-        viewModelScope.launch{
-            newsRepository.addBookmark(article)
         }
     }
 
-    fun deleteBookmark(article: ArticleEntity){
+    fun getSearchNews(searchQuery: String) {
+        viewModelScope.launch {
+            articlesList.postValue(NewsResult.Loading())
+            val response = newsRepository.getSearchedNews(searchQuery)
+            if (response.isSuccessful && response.body() != null) {
+                val articles =
+                    response.body()!!.articles.map {
+                        it.publishedAt = getTime(it.publishedAt)
+                        it
+                    }
+                articlesList.postValue(NewsResult.Success(articles))
+            } else if (response.errorBody() != null) {
+                val errorObj = JSONObject(response.errorBody()!!.charStream().readText())
+                articlesList.postValue(NewsResult.Error(message = errorObj.getString("message")))
+            } else {
+                articlesList.postValue(NewsResult.Error(message = "Something went wrong"))
+            }
+        }
+    }
+
+    fun addBookmark(article: ArticleEntity) {
+        viewModelScope.launch {
+            newsRepository.addBookmark(article)
+            allBookmarks.postValue(newsRepository.getBookmarks())
+        }
+    }
+
+    fun deleteBookmark(article: ArticleEntity) {
         viewModelScope.launch {
             newsRepository.deleteBookmark(article)
         }
     }
 
-    fun getAllBookmark(){
-        viewModelScope.launch{
-           allBookmarks.postValue(newsRepository.getBookmarks())
+    fun getAllBookmark() {
+        viewModelScope.launch {
+            allBookmarks.postValue(newsRepository.getBookmarks())
         }
     }
 

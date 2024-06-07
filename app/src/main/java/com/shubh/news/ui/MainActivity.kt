@@ -42,7 +42,7 @@ class MainActivity : AppCompatActivity() {
 
         val newsDB = (application as NewsApp).newsDB
         val newsViewModelFactory = NewsViewModelProviderFactory(NewsRepository(newsDB))
-        newsViewModel = ViewModelProvider(this,newsViewModelFactory).get(NewsViewModel::class.java)
+        newsViewModel = ViewModelProvider(this, newsViewModelFactory).get(NewsViewModel::class.java)
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -59,13 +59,14 @@ class MainActivity : AppCompatActivity() {
             }
         }.attach()
     }
-    fun hideTabandViewPager(){
+
+    fun hideTabandViewPager() {
         binding.viewPager.visibility = View.GONE
         binding.tabLayout.visibility = View.GONE
         binding.fragmentContainerView.visibility = View.VISIBLE
     }
 
-    fun showTabandViewPager(){
+    fun showTabandViewPager() {
         binding.viewPager.visibility = View.VISIBLE
         binding.tabLayout.visibility = View.VISIBLE
         binding.fragmentContainerView.visibility = View.GONE
@@ -79,11 +80,14 @@ class MainActivity : AppCompatActivity() {
         override fun createFragment(position: Int): Fragment {
             return when (position) {
                 0 -> {
-                    TopHeadlines()}
+                    TopHeadlines()
+                }
+
                 1 -> {
 
                     Bookmarks()
                 }
+
                 else -> TopHeadlines()
             }
         }

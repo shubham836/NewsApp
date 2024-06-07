@@ -11,5 +11,5 @@ data class Article(
     var publishedAt: String,
     val title: String,
     val url: String
-):Parcelable
+) : Parcelable
 

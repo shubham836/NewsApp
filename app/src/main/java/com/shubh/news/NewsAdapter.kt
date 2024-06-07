@@ -37,10 +37,10 @@ class NewsAdapter(
             onClick(position)
         }
         holder.binding.newsItemCardLayout.setOnLongClickListener {
-            if (onLongPress!= null){
+            if (onLongPress != null) {
                 onLongPress?.invoke(position)
                 true
-            }else {
+            } else {
                 false
             }
         }
