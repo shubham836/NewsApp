@@ -43,20 +43,43 @@ class Bookmarks : Fragment() {
         return binding.root
     }
 
-    @SuppressLint("NotifyDataSetChanged")
+
     override fun onResume() {
         super.onResume()
         val activity = requireActivity() as MainActivity
         activity.showTabandViewPager()
         getData()
-        newsAdapter.notifyDataSetChanged()
     }
 
+    @SuppressLint("NotifyDataSetChanged")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         newsViewModel = ViewModelProvider(requireActivity()).get(NewsViewModel::class.java)
         getData()
+
+        newsViewModel.allBookmarks.observe(viewLifecycleOwner, Observer {
+            bookmarkedArticles = it
+            if (bookmarkedArticles.isNotEmpty()) {
+                articles.clear()
+                bookmarkedArticles.forEach {
+                    articles.add(
+                        Article(
+                            it.description,
+                            it.image,
+                            it.publishedAt,
+                            it.title,
+                            it.url
+                        )
+                    )
+                }
+                newsAdapter.notifyDataSetChanged()
+                Log.d(TAG, "onViewCreated: ${bookmarkedArticles.size}")
+            } else {
+                binding.bookmarksRecyclerView.visibility = View.GONE
+                binding.errorMessageTextView.visibility = View.VISIBLE
+            }
+        })
 
         binding.bookmarksRecyclerView.layoutManager = LinearLayoutManager(context)
         newsAdapter = NewsAdapter(requireContext(), articles, {
@@ -97,29 +120,6 @@ class Bookmarks : Fragment() {
 
     private fun getData() {
         newsViewModel.getAllBookmark()
-
-        newsViewModel.allBookmarks.observe(viewLifecycleOwner, Observer {
-            bookmarkedArticles = it
-            if (bookmarkedArticles.isNotEmpty()) {
-                articles.clear()
-                bookmarkedArticles.forEach {
-                    articles.add(
-                        Article(
-                            it.description,
-                            it.image,
-                            it.publishedAt,
-                            it.title,
-                            it.url
-                        )
-                    )
-                }
-                Log.d(TAG, "onViewCreated: ${bookmarkedArticles.size}")
-            } else {
-                binding.bookmarksRecyclerView.visibility = View.GONE
-                binding.errorMessageTextView.visibility = View.VISIBLE
-            }
-        })
-
 
     }
 
